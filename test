@@ -1,0 +1,48 @@
+import numpy as np
+from scipy.fft import fft, ifft, rfft, irfft
+
+def _transform_to_grid_complex(data, axis=-1, scale=1):
+    # N = len(data)
+    # if scale == 1:
+    #     return ifft(data, axis=axis)
+    # else:
+    #     new_data = np.zeros(scale*N, dtype=np.complex128)
+    #     if N % 2 == 0:
+    #         first = data[:int(N/2)]
+    #         last = data[int(N/2):]
+    #     else:
+    #         first = data[:int((N+1)/2)]
+    #         last = data[int((N+1)/2):]
+
+    #     new_data[:len(first)] = first
+    #     new_data[-len(last):] = last
+    #     return [new_data, scale*ifft(new_data), scale*ifft(data, n = scale*N)]
+    added = len(data)*(scale - 1)
+    data = np.insert(data, int(len(data)/2), np.zeros(int(added), dtype=data.dtype))
+    return ifft(data)
+
+def _transform_to_coeff_complex(data, axis=-1):
+    x = fft(data)
+    N = len(data)
+    x = np.append(x[0:int(N/2)], x[-int(N/2):])
+    x[-int(N/2)] = 0
+    return x
+
+def _transform_to_grid_real(data, axis=-1, scale=1):
+    complex_data = np.zeros(scale*(len(data)//2+1), dtype=np.complex128)
+    complex_data[:32].real = data[::2]
+    complex_data[:32].imag = data[1::2]
+    return irfft(complex_data, axis=axis)
+
+def _transform_to_coeff_real(data, axis=-1):
+    coeffs = rfft(data, axis=axis)
+    coeff_data = np.zeros(len(data))
+    coeff_data[::2] = coeffs.real[:int(len(data)/2)]
+    coeff_data[1::2] = coeffs.imag[:int(len(data)/2)]
+    return coeff_data
+
+
+x = np.array([1.0, 2.0, 1.0, -1.0, 1.5, 1.0])
+y = _transform_to_coeff_complex(x)
+[nd, xn, xpad] = _transform_to_grid_complex(y,scale=3/2)
+yn = _transform_to_coeff_complex(xn)
