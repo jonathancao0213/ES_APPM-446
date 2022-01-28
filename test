@@ -1,5 +1,8 @@
 import numpy as np
 from scipy.fft import fft, ifft, rfft, irfft
+from math import floor, ceil
+from spectral import Fourier, Domain, Field
+from numpy.random import default_rng
 
 def _transform_to_grid_complex(data, axis=-1, scale=1):
     # N = len(data)
@@ -28,21 +31,62 @@ def _transform_to_coeff_complex(data, axis=-1):
     x[-int(N/2)] = 0
     return x
 
-def _transform_to_grid_real(data, axis=-1, scale=1):
-    complex_data = np.zeros(scale*(len(data)//2+1), dtype=np.complex128)
-    complex_data[:32].real = data[::2]
-    complex_data[:32].imag = data[1::2]
-    return irfft(complex_data, axis=axis)
+# def _transform_to_grid_real(data, axis=-1, scale=1):
+#     complex_data = np.zeros(scale*(len(data)//2+1), dtype=np.complex128)
+#     complex_data[:32].real = data[::2]
+#     complex_data[:32].imag = data[1::2]
+#     return irfft(complex_data, axis=axis)
 
-def _transform_to_coeff_real(data, axis=-1):
-    coeffs = rfft(data, axis=axis)
-    coeff_data = np.zeros(len(data))
-    coeff_data[::2] = coeffs.real[:int(len(data)/2)]
-    coeff_data[1::2] = coeffs.imag[:int(len(data)/2)]
+# def _transform_to_grid_real(data, axis, scale):
+#         d = np.zeros(scale*len(data))
+#         d[:len(data)] = data
+#         return irfft(d)
+
+# def _transform_to_coeff_real(data, axis=-1):
+#     coeffs = rfft(data, axis=axis)
+#     coeff_data = np.zeros(len(data))
+#     coeff_data[::2] = coeffs.real[:int(len(data)/2)]
+#     coeff_data[1::2] = coeffs.imag[:int(len(data)/2)]
+#     return coeff_data
+
+def _transform_to_grid_real(data, axis, scale):
+    # added = self.N*(scale - 1)
+    complex_data = np.zeros(int(scale*len(data)/2), dtype=np.complex128)
+    complex_data[:len(data)//2].real = data[::2]
+    complex_data[:len(data)//2].imag = data[1::2]
+    return irfft(complex_data)
+    return irfft(complex_data)*(len(data)//2)
+            
+def _transform_to_coeff_real(data, axis):
+    coeffs = rfft(data)
+    coeff_data = np.zeros(len(coeffs)*2)
+    coeff_data[::2] = coeffs.real
+    coeff_data[1::2] = coeffs.imag
+    coeff_data[1] = 0
     return coeff_data
+    return coeff_data/(len(data)//2)
+
+# x = np.array([1.0, 2.0, 1.0, -1.0, 1.5, 1.0])
+# y = _transform_to_coeff_real(x,-1)
+# z = _transform_to_grid_real(y,-1,1)
+
+N = 64
+scale = 1
+scale2 = 2
+
+x_basis = Fourier(N)
+domain = Domain([x_basis])
+f = Field(domain, dtype=np.float64)
+rng = default_rng(42)
+N_grid = int(np.ceil(N*scale))
+f.data = rng.standard_normal(N_grid)
+# # filter out unresolved modes
+# f.require_coeff_space()
+# f.require_grid_space(scales=scale)
+# f0 = np.copy(f.data)
+# f.require_coeff_space()
+# f.require_grid_space(scales=scale)
 
 
-x = np.array([1.0, 2.0, 1.0, -1.0, 1.5, 1.0])
-y = _transform_to_coeff_complex(x)
-[nd, xn, xpad] = _transform_to_grid_complex(y,scale=3/2)
-yn = _transform_to_coeff_complex(xn)
+
+

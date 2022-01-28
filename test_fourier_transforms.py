@@ -3,6 +3,7 @@ import pytest
 import numpy as np
 from spectral import Fourier, Domain, Field
 from numpy.random import default_rng
+from scipy.fft import rfft, irfft
 
 @pytest.mark.parametrize('N', [64])
 @pytest.mark.parametrize('scale', [1,3/2,2])
