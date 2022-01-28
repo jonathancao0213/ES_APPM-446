@@ -64,12 +64,13 @@ class Fourier(Basis):
         return x/len(data)
 
     def _transform_to_grid_real(self, data, axis, scale):
-        # added = self.N*(scale - 1)
-        complex_data = np.zeros(int(scale*(len(data)//2+1)), dtype=np.complex128)
+        complex_data = np.zeros(int(scale*(len(data)//2 + 1)), dtype=np.complex128)
         complex_data[:len(data)//2].real = data[::2]
         complex_data[:len(data)//2].imag = data[1::2]
-        # return irfft(complex_data)
-        return irfft(complex_data)*(scale*len(data)//2)
+        if scale != 2:
+            return irfft(complex_data)*(scale*len(data)//2)
+        else:
+            return irfft(complex_data)*(scale*len(data)//2 + 1)
                 
     def _transform_to_coeff_real(self, data, axis):
         coeffs = rfft(data)
