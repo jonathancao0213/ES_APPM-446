@@ -24,16 +24,19 @@ class KdVEquation:
             p.L = sparse.diags(diag)
         else:
             diag = x_basis.wavenumbers(dtype)**3
-            d = np.zeros(len(diag))
-            d[::2] = diag[1::2]
-            d[1::2] = -diag[::2]
-            p.L = sparse.diags(d, dtype=dtype)
+            up = np.zeros(len(diag)-1)
+            up[::2] = diag[1::2]
+            lo = np.zeros(len(diag)-1)
+            lo[::2] = -diag[::2]
+            p.L = sparse.diags(up, offsets=1, dtype=dtype) + sparse.diags(lo, offsets=-1, dtype=dtype)
+
         
     def evolve(self, timestepper, dt, num_steps): # take timesteps
         ts = timestepper(self.problem)
         x_basis = self.domain.bases[0]
         u = self.u
         dudx = self.dudx
+        dtype = self.dtype
         RHS = self.RHS
 
         for i in range(num_steps):
@@ -43,10 +46,13 @@ class KdVEquation:
             if self.dtype == np.complex128:
                 dudx.data = 1j*x_basis.wavenumbers(self.dtype)*u.data
             else:
-                n = np.zeros(len(x_basis.wavenumbers(self.dtype)))
-                n[::2] = -x_basis.wavenumbers(self.dtype)[1::2]
-                n[1::2] = x_basis.wavenumbers(self.dtype)[::2]
-                dudx.data = n*u.data
+                diag = x_basis.wavenumbers(dtype)
+                up = np.zeros(len(diag)-1)
+                up[::2] = -diag[1::2]
+                lo = np.zeros(len(diag)-1)
+                lo[::2] = diag[::2]
+                L = sparse.diags(up, offsets=1, dtype=dtype) + sparse.diags(lo, offsets=-1, dtype=dtype)
+                dudx.data = L * u.data
             u.require_grid_space(scales=3/2)
             dudx.require_grid_space(scales=3/2)
             RHS.require_grid_space(scales=3/2)
