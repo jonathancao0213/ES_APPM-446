@@ -120,8 +120,10 @@ class Fourier(Basis):
         badfreq = axslice(axis, Kmax+1, None)
         posfreq_cos = axslice(axis, 2, (Kmax+1)*2, 2)
         posfreq_msin = axslice(axis, 3, (Kmax+1)*2, 2)
-        np.multiply(data_in[posfreq_cos], rescale/2, data_out[posfreq].real)
-        np.multiply(data_in[posfreq_msin], rescale/2, data_out[posfreq].imag)
+        np.multiply(data_in[posfreq_cos], rescale/2, data_out[posfreq].real, casting='unsafe')
+        np.multiply(data_in[posfreq_msin], rescale/2, data_out[posfreq].imag, casting='unsafe')
+        # np.multiply(data_in[posfreq_cos], rescale/2, data_out[posfreq].real)
+        # np.multiply(data_in[posfreq_msin], rescale/2, data_out[posfreq].imag)
         data_out[badfreq] = 0.
 
     def _transform_to_grid_real(self, data, axis, scale):
