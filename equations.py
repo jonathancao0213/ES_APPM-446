@@ -75,16 +75,19 @@ class SHEquation:
         p = self.problem.pencils[0]
 
         x_basis = domain.bases[0]
+        
         I = sparse.eye(x_basis.N, dtype=dtype)
         p.M = I
-        if dtype == np.complex128:
-            diag = -2*x_basis.wavenumbers(dtype)**2 + x_basis.wavenumbers(dtype)**4
-            p.L = sparse.diags(diag)
-        else:
-            diag2 = x_basis.wavenumbers(dtype)**2
-            diag4 = x_basis.wavenumbers(dtype)**4
-            d = -2*diag2 + diag4
-            p.L = sparse.diags(d, dtype=dtype)
+        diag = -2*x_basis.wavenumbers(dtype)**2 + x_basis.wavenumbers(dtype)**4
+        p.L = sparse.diags(diag, dtype=dtype)
+#         if dtype == np.complex128:
+#             diag = -2*x_basis.wavenumbers(dtype)**2 + x_basis.wavenumbers(dtype)**4
+#             p.L = sparse.diags(diag)
+#         else:
+#             diag2 = x_basis.wavenumbers(dtype)**2
+#             diag4 = x_basis.wavenumbers(dtype)**4
+#             d = -2*diag2 + diag4
+#             p.L = sparse.diags(d, dtype=dtype)
 
     def evolve(self, timestepper, dt, num_steps):
         ts = timestepper(self.problem)
@@ -96,6 +99,7 @@ class SHEquation:
             # need to calculate -u*ux and put it into RHS
             u.require_coeff_space()
             u.require_grid_space(scales=3/2)
+            RHS.require_grid_space(scales=3/2)
             RHS.data = -u.data**3 + 1.8*u.data**2 - 1.3*u.data
 
             # take timestep
