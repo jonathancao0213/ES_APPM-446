@@ -135,7 +135,7 @@ class CGLEquation:
 
         Z = np.zeros((N, N))
         L = sparse.bmat([[D, -C],
-                         [Z, -(1+0.5j)*D]])
+                         [-C, -(1+0.5j)*D]])
         L = sparse.bmat([[      L,   cols],
                          [BC_rows, corner]])
         L = L.tocsr()
@@ -153,16 +153,16 @@ class CGLEquation:
             ux.require_coeff_space()
             ux_RHS.require_coeff_space()
             u_mag.require_coeff_space()
-            u.require_grid_space(scales=3/2)
-            ux.require_grid_space(scales=3/2)
-            ux_RHS.require_grid_space(scales=3/2)
-            u_mag.require_grid_space(scales=3/2)
+            u.require_grid_space()
+            ux.require_grid_space()
+            ux_RHS.require_grid_space()
+            u_mag.require_grid_space()
 
             
             # ux_RHS.data = u.data * (1 - (1 - 1.76j) * LA.norm(u.data)**2)
             u_mag.data = u.data.real**2 + u.data.imag**2
             # ux_RHS.data = -(1 + 1j*(-1.76)) * u_mag.data * u.data
-            ux_RHS.data = u.data - (1 - 1.76j) * u_mag.data * u.data
+            ux_RHS.data = -(1 - 1.76j) * u_mag.data * u.data
             ux_RHS.require_coeff_space()
             ux_RHS.data = self.C @ ux_RHS.data
             u.require_coeff_space()
