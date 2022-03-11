@@ -88,16 +88,6 @@ class SoundWaves:
 
             ts.step(dt, [0,0])
 
-
-            # dudx.require_coeff_space()
-            # # dudx.data[-1] = 0
-            # # dudx.data[-2] = 2*(N-1)*u.data[-1]
-            # # for n in range(N-3, 0, -1):
-            # #     dudx.data[n] = dudx.data[n+2] + 2*(n+1)*u.data[n+1]
-            # # dudx.data[0] = 0.5*dudx.data[2] + u.data[1]
-            # # u.require_grid_space(scales=3/2)
-            # dudx.require_grid_space(scales=1)
-
 class CGLEquation:
 
     def __init__(self, domain, u):
@@ -108,6 +98,7 @@ class CGLEquation:
         self.dudx = spectral.Field(domain, dtype=dtype)
         self.u_RHS = spectral.Field(domain, dtype=dtype)
         self.ux_RHS = spectral.Field(domain, dtype=dtype)
+        self.u_mag = spectral.Field(domain, dtype=dtype)
         
         self.problem = spectral.InitialValueProblem(domain, [u, ux], [self.u_RHS, self.ux_RHS],
                                                     num_BCs=2, dtype=dtype)
@@ -119,6 +110,8 @@ class CGLEquation:
         
         diag = np.arange(N-1)+1
         D = sparse.diags(diag, offsets=1)
+        D = 1/50*D
+        self.D = D
 
         diag0 = np.ones(N)/2
         diag0[0] = 1
@@ -153,15 +146,23 @@ class CGLEquation:
         u = self.u
         ux = self.ux
         ux_RHS = self.ux_RHS
+        u_mag = self.u_mag
 
         for i in range(num_steps):
             u.require_coeff_space()
             ux.require_coeff_space()
             ux_RHS.require_coeff_space()
+            u_mag.require_coeff_space()
             u.require_grid_space(scales=3/2)
             ux.require_grid_space(scales=3/2)
             ux_RHS.require_grid_space(scales=3/2)
-            ux_RHS.data = u.data - (1 - 1.76j) * LA.norm(u.data)**2 * u.data
+            u_mag.require_grid_space(scales=3/2)
+
+            
+            # ux_RHS.data = u.data * (1 - (1 - 1.76j) * LA.norm(u.data)**2)
+            u_mag.data = u.data.real**2 + u.data.imag**2
+            # ux_RHS.data = -(1 + 1j*(-1.76)) * u_mag.data * u.data
+            ux_RHS.data = u.data - (1 - 1.76j) * u_mag.data * u.data
             ux_RHS.require_coeff_space()
             ux_RHS.data = self.C @ ux_RHS.data
             u.require_coeff_space()
