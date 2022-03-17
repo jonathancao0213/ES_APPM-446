@@ -75,6 +75,42 @@ class Chebyshev(Basis):
         coeff_data[axslice(axis, 1, self.N)] /= N_grid
         return coeff_data
 
+    def differentiate(self, data, axis, dtype=np.float64):
+        N = self.N
+        out = np.zeros(data.shape, dtype=dtype)
+        out[axslice(axis, N-1, None)] = 0
+        out[axslice(axis, N-2, N)] = 2*(N-1)*data[axslice(axis, N-1, None)]
+        for n in range(N-3, -1, -1):
+            out[axslice(axis, n, n+1)] = out[axslice(axis, n+2, n+3)] + 2*(n+1)*data[axslice(axis, n+1, n+2)]
+        out[axslice(axis, 0, 1)] *= 0.5
+        out *= 2/(self.interval[1] - self.interval[0])
+        return out
+
+    def derivative_TT(self):
+        N = self.N
+        D = sparse.lil_matrix((N, N))
+        for i in range(N-1):
+            for j in range(i+1, N, 2):
+                if i == 0:
+                    D[i, j] = j
+                if i != 0:
+                    D[i, j] = 2*j
+        return D * 2/(self.interval[1] - self.interval[0])
+
+    def derivative_TU(self):
+        N = self.N
+        diag = np.arange(N-1) + 1
+        D = sparse.diags(diag, offsets=1)
+        return D * 2/(self.interval[1] - self.interval[0])
+
+    def convert_TU(self):
+        N = self.N
+        diag0 = np.ones(N)/2
+        diag0[0] = 1
+        diag2 = -np.ones(N-2)/2
+        C = sparse.diags([diag0, diag2], offsets=(0, 2))
+        return C
+
 
 class Fourier(Basis):
 
@@ -367,7 +403,7 @@ class Timestepper:
             if problem.num_BCs > 0:
                 p.taus = np.zeros(problem.num_BCs, dtype=problem.dtype)
 
-    def step(self, dt, BCs=None):
+    def step(self, dt, BC_func=None):
         problem = self.problem
         X = problem.X
         F = problem.F
@@ -376,7 +412,10 @@ class Timestepper:
         a, b, c = self.coefficients(self.dt, self.iteration)
         P = self.problem.P
         for p in problem.pencils:
-            F.gather(p, BCs)
+            if BC_func is None:
+                F.gather(p)
+            else:
+                F.gather(p, BC_func(p.wavenumbers))
             p.F.rotate()
             np.copyto(p.F[0], F.vector)
 
@@ -400,8 +439,8 @@ class Timestepper:
             if self.a0_old != a[0] or self.b0_old != b[0]:
                 LHS = P @ (a[0]*p.M + b[0]*p.L) @ P.T
                 LHS = LHS.astype(problem.dtype)
-                p.LU = spla.splu(LHS)
-            Xbar = p.LU.solve(p.RHS)
+                p.LU = spla.splu(LHS.T)
+            Xbar = p.LU.solve(p.RHS, trans='T')
             X.vector = P.T @ Xbar
             if problem.num_BCs > 0:
                 X.scatter(p, p.taus)
@@ -464,13 +503,16 @@ class SBDF2(Timestepper):
 
 class BoundaryValueProblem(Problem):
 
-    def solve(self, F):
+    def solve(self, F, BC_func=None):
         # F is RHS
         P = self.P
         for p in self.pencils:
             if not hasattr(p, 'L'):
                 raise ValueError("Pencil {} does not have a linear operator L".format(p))
-            F.gather(p)
+            if BC_func is None:
+                F.gather(p)
+            else:
+                F.gather(p, BCs=BC_func(p.wavenumbers))
             Lbar = P @ p.L @ P.T
             Fbar = P @ F.vector
             Xbar = spla.spsolve(Lbar, Fbar)
